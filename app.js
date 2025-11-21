@@ -430,11 +430,23 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
-        if (!e.target.classList.contains("grid-cell")) return;
-        const slot = parseInt(e.target.dataset.slot);
-        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 1));
+
+        // 予定ブロックをクリックした場合は反応しない
+        if (e.target.closest(".event-block")) return;
+
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+
+        const slot = parseInt(cell.dataset.slot);
+        if (isNaN(slot)) return;
+
+        const start = slotToTime(slot);
+        const end = slotToTime(slot + 2);   // ← デフォルト 1 時間（30分×2スロット）
+
+        openCreateModal(dateKey, start, end);
     });
 }
+
 
 // ============================================================
 //   ドラッグ追加（範囲選択 → 編集モーダル）
@@ -628,16 +640,34 @@ function enableTimelineHandle(handle, type) {
         const move = e2 => {
             let newTop = origin + (e2.clientY - startY);
 
+            // タイムライン範囲内に制限 (-12 ～ 708)
             newTop = Math.max(-12, newTop);
             newTop = Math.min(720 - 12, newTop);
 
+            // ピクセル → スロット変換
             let slot = Math.round((newTop + 12) / 30);
-            slot = Math.max(0, Math.min(47, slot));
 
+            // ---- ▼ ハンドルが交差しないように制限 ▼ ----
+            if (type === "start") {
+                const endSlot = timeToSlot(inputEnd.value);
+                if (slot >= endSlot) slot = endSlot - 1;
+            } else { // type === "end"
+                const startSlot = timeToSlot(inputStart.value);
+                if (slot <= startSlot) slot = startSlot + 1;
+            }
+            // ---- ▲ ここが今回追加した制限 ▲ ----
+
+            // スロット → 時刻に変換
             const time = slotToTime(slot);
-            if (type === "start") inputStart.value = time;
-            else inputEnd.value = time;
 
+            // どちらのハンドルかによって値を更新
+            if (type === "start") {
+                inputStart.value = time;
+            } else {
+                inputEnd.value = time;
+            }
+
+            // 見た目反映
             syncTimelineFromInputs();
         };
 
@@ -650,6 +680,7 @@ function enableTimelineHandle(handle, type) {
         document.addEventListener("mouseup", up);
     });
 }
+
 
 enableTimelineHandle(tHandleStart, "start");
 enableTimelineHandle(tHandleEnd, "end");
@@ -677,13 +708,23 @@ modalSave.onclick = () => {
         const idx = list.findIndex(x => x.id === ev.id);
         if (idx >= 0) list[idx] = ev;
     } else {
+        // ---- 新規作成 ----
+        
+        // タイトルが空なら自動命名
+        let autoTitle = title;
+        if (!autoTitle) {
+            let count = (events[dateKey] || []).length + 1;
+            autoTitle = (count === 1) ? "予定" : "予定" + count;
+        }
+        
         list.push({
             id: "ev" + Date.now(),
-            title,
+            title: autoTitle,
             note,
             start,
             end
         });
+
     }
 
     events[dateKey] = list;
