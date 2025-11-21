@@ -20,6 +20,16 @@ let state = {
     focusDate: new Date()
 };
 
+function updateActiveButton() {
+    document.getElementById("month-btn").classList.remove("primary");
+    document.getElementById("week-btn").classList.remove("primary");
+    document.getElementById("today-btn").classList.remove("primary");
+
+    if (state.view === "month") document.getElementById("month-btn").classList.add("primary");
+    if (state.view === "week") document.getElementById("week-btn").classList.add("primary");
+    if (state.view === "today") document.getElementById("today-btn").classList.add("primary");
+}
+
 // ============================================================
 //   RENDER MAIN
 // ============================================================
@@ -37,7 +47,10 @@ function render() {
     if (state.view === "month") renderMonth(container);
     else if (state.view === "week") renderWeek(container);
     else renderToday(container);
+
+    updateActiveButton(); // ← ← ★ これ追加！
 }
+
 
 // ============================================================
 //   Month View
@@ -328,11 +341,52 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function renderToday(container) {
     const wrap = document.createElement("div");
-    wrap.className = "today-view";
-    wrap.textContent = "今日のスケジュール機能（後で追加可）";
+    wrap.className = "week-view";  // 同じスタイルでOK（縦スクロール）
 
+    const key = toYMD(state.focusDate);
+    const events = loadEvents()[key] || [];
+
+    // 曜日ヘッダー
+    const header = document.createElement("div");
+    header.className = "week-days";
+    header.innerHTML = `<div></div><div>${weekdayNames[state.focusDate.getDay()]} ${state.focusDate.getMonth()+1}/${state.focusDate.getDate()}</div>`;
+    wrap.appendChild(header);
+
+    // グリッド本体
+    const grid = document.createElement("div");
+    grid.className = "week-grid";
+
+    // 左・時間軸
+    const timeCol = document.createElement("div");
+    timeCol.className = "time-col";
+    for (let h = 0; h < 24; h++) {
+        const t = document.createElement("div");
+        t.className = "time-cell";
+        t.textContent = pad2(h) + ":00";
+        timeCol.appendChild(t);
+    }
+    grid.appendChild(timeCol);
+
+    // 今日の1列
+    const col = document.createElement("div");
+    col.className = "day-col";
+    col.dataset.date = key;
+
+    for (let s = 0; s < 48; s++) {
+        const cell = document.createElement("div");
+        cell.className = "grid-cell";
+        col.appendChild(cell);
+    }
+
+    // イベント追加
+    events.forEach(ev => placeEventBlock(col, ev, key));
+
+    grid.appendChild(col);
+
+    wrap.appendChild(grid);
     container.appendChild(wrap);
 }
+
 
 // ============================================================
 //   BUTTON HANDLERS
