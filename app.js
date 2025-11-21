@@ -463,9 +463,12 @@ function enableColumnClick(col, dateKey) {
         if (!e.target.classList.contains("grid-cell")) return;
 
         const slot = parseInt(e.target.dataset.slot);
-        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 1));
+
+        // ★ 修正：終了時刻を +1 → +2（30分×2=1時間）
+        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 2));
     });
 }
+
 
 // ============================================================
 //  ドラッグで選択 → 「予定」イベント自動作成
