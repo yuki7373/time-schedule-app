@@ -430,22 +430,20 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
+        if (!e.target.classList.contains("grid-cell")) return;
 
-        // 予定ブロックをクリックした場合は反応しない
-        if (e.target.closest(".event-block")) return;
+        const slot = parseInt(e.target.dataset.slot);
 
-        const cell = e.target.closest(".grid-cell");
-        if (!cell) return;
-
-        const slot = parseInt(cell.dataset.slot);
+        // ← slot が NaN なら絶対に実行しないように防御
         if (isNaN(slot)) return;
 
         const start = slotToTime(slot);
-        const end = slotToTime(slot + 2);   // ← デフォルト 1 時間（30分×2スロット）
+        const end = slotToTime(slot + 2);  // デフォルト 1時間（2スロット＝30分 × 2）
 
         openCreateModal(dateKey, start, end);
     });
 }
+
 
 
 // ============================================================
@@ -461,27 +459,30 @@ function enableColumnDrag(col, dateKey) {
         if (!cell) return;
 
         dragStartSlot = parseInt(cell.dataset.slot);
+
+        if (isNaN(dragStartSlot)) return;
+
         isDragging = true;
 
+        // プレビュー
         dragPreview = document.createElement("div");
         dragPreview.className = "event-block";
         dragPreview.style.opacity = "0.4";
         dragPreview.style.left = "6px";
         dragPreview.style.right = "6px";
-        dragPreview.style.background = "var(--accent)";
-        dragPreview.style.borderRadius = "6px";
         dragPreview.style.position = "absolute";
         dragPreview.style.pointerEvents = "none";
         col.appendChild(dragPreview);
     });
 
     col.addEventListener("mousemove", e => {
-        if (!isDragging) return;
+        if (!isDragging || !dragPreview) return;
 
         const cell = e.target.closest(".grid-cell");
         if (!cell) return;
 
-        const currentSlot = parseInt(cell.dataset.slot);
+        let currentSlot = parseInt(cell.dataset.slot);
+        if (isNaN(currentSlot)) return;
 
         const s = Math.min(dragStartSlot, currentSlot);
         const e2 = Math.max(dragStartSlot, currentSlot) + 1;
@@ -499,16 +500,22 @@ function enableColumnDrag(col, dateKey) {
         const top = parseInt(dragPreview.style.top);
         const height = parseInt(dragPreview.style.height);
 
+        dragPreview.remove();
+        dragPreview = null;
+
         const startSlot = top / 30;
         const endSlot = startSlot + (height / 30);
 
-        // 仮イベント（後で編集）
+        const start = slotToTime(startSlot);
+        const end = slotToTime(endSlot);
+
+        // 新規イベント
         const ev = {
             id: "ev" + Date.now(),
-            title: "",
+            title: "予定",
             note: "",
-            start: slotToTime(startSlot),
-            end: slotToTime(endSlot)
+            start,
+            end
         };
 
         const events = loadEvents();
@@ -517,15 +524,13 @@ function enableColumnDrag(col, dateKey) {
         events[dateKey] = list;
         saveEvents(events);
 
-        dragPreview.remove();
-        dragPreview = null;
-
-        // 追加後すぐ編集モーダル
+        // 追加後すぐ編集モーダルを開く
         openEditModal(ev, dateKey);
 
         render();
     });
 }
+
 
 // ============================================================
 //  モーダル関連（共通）
@@ -640,34 +645,26 @@ function enableTimelineHandle(handle, type) {
         const move = e2 => {
             let newTop = origin + (e2.clientY - startY);
 
-            // タイムライン範囲内に制限 (-12 ～ 708)
+            // 範囲制限 (-12 ～ 708px)
             newTop = Math.max(-12, newTop);
             newTop = Math.min(720 - 12, newTop);
 
-            // ピクセル → スロット変換
             let slot = Math.round((newTop + 12) / 30);
 
-            // ---- ▼ ハンドルが交差しないように制限 ▼ ----
+            // ---- 交差しないように制限 ----
             if (type === "start") {
                 const endSlot = timeToSlot(inputEnd.value);
                 if (slot >= endSlot) slot = endSlot - 1;
-            } else { // type === "end"
+            } else {
                 const startSlot = timeToSlot(inputStart.value);
                 if (slot <= startSlot) slot = startSlot + 1;
             }
-            // ---- ▲ ここが今回追加した制限 ▲ ----
 
-            // スロット → 時刻に変換
             const time = slotToTime(slot);
 
-            // どちらのハンドルかによって値を更新
-            if (type === "start") {
-                inputStart.value = time;
-            } else {
-                inputEnd.value = time;
-            }
+            if (type === "start") inputStart.value = time;
+            else inputEnd.value = time;
 
-            // 見た目反映
             syncTimelineFromInputs();
         };
 
@@ -682,6 +679,7 @@ function enableTimelineHandle(handle, type) {
 }
 
 
+
 enableTimelineHandle(tHandleStart, "start");
 enableTimelineHandle(tHandleEnd, "end");
 
@@ -689,7 +687,7 @@ enableTimelineHandle(tHandleEnd, "end");
 //  保存（新規 / 編集）
 // ============================================================
 modalSave.onclick = () => {
-    const title = inputTitle.value.trim() || "";
+    const title = inputTitle.value.trim();
     const note = inputNote.value.trim();
     const start = inputStart.value;
     const end = inputEnd.value;
@@ -698,25 +696,32 @@ modalSave.onclick = () => {
     const events = loadEvents();
     const list = events[dateKey] || [];
 
+    // -----------------------------------------
+    // 編集モード（既存イベント）
+    // -----------------------------------------
     if (state.editingEvent) {
         const ev = state.editingEvent;
-        ev.title = title;
+
+        ev.title = title || ev.title || "予定";    // 空なら前の名前 or "予定"
         ev.note = note;
         ev.start = start;
         ev.end = end;
 
         const idx = list.findIndex(x => x.id === ev.id);
         if (idx >= 0) list[idx] = ev;
-    } else {
-        // ---- 新規作成 ----
-        
-        // タイトルが空なら自動命名
+    }
+
+    // -----------------------------------------
+    // 新規作成モード
+    // -----------------------------------------
+    else {
+        // タイトルが空なら自動命名（予定1 / 予定2 / …）
         let autoTitle = title;
         if (!autoTitle) {
-            let count = (events[dateKey] || []).length + 1;
-            autoTitle = (count === 1) ? "予定" : "予定" + count;
+            const count = list.length + 1;
+            autoTitle = (count === 1) ? "予定" : `予定${count}`;
         }
-        
+
         list.push({
             id: "ev" + Date.now(),
             title: autoTitle,
@@ -724,9 +729,9 @@ modalSave.onclick = () => {
             start,
             end
         });
-
     }
 
+    // 保存して閉じる
     events[dateKey] = list;
     saveEvents(events);
 
