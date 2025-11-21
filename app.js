@@ -354,34 +354,47 @@ function placeEventBlock(col, ev, dateKey) {
 //  ドラッグ移動
 // ============================================================
 function enableDrag(block, ev, dateKey) {
-    let startY, startTop;
+    let startY = 0;
+    let startTop = 0;
+    let dragging = false;
 
     block.addEventListener("mousedown", e => {
         if (e.target.classList.contains("resize-handle")) return;
 
         startY = e.clientY;
         startTop = parseInt(block.style.top);
-        block.classList.add("event-dragging");
+        dragging = false;
 
         const move = e2 => {
-            let newTop = startTop + (e2.clientY - startY);
+            const dy = e2.clientY - startY;
+            if (Math.abs(dy) > 5) dragging = true; // ← 5px以上動いたらドラッグ判定
+
+            if (!dragging) return;
+
+            let newTop = startTop + dy;
             newTop = Math.max(0, newTop);
             newTop = Math.round(newTop / 30) * 30;
             block.style.top = newTop + "px";
         };
 
         const up = () => {
-            block.classList.remove("event-dragging");
             document.removeEventListener("mousemove", move);
             document.removeEventListener("mouseup", up);
 
+            if (!dragging) {
+                // ← CLICK 扱い（編集モーダルを開く）
+                openEditModal(ev, dateKey);
+                return;
+            }
+
+            // ---- ドラッグ確定で保存 ----
             const finalTop = parseInt(block.style.top);
             const startSlot = finalTop / 30;
-
-            const durationMin = parseInt(block.style.height) / 30 * 30;
+            const duration = parseInt(block.style.height) / 30;
 
             ev.start = slotToTime(startSlot);
-            ev.end = slotToTime(startSlot + durationMin / 30);
+            ev.end = slotToTime(startSlot + duration);
+
             saveMovedEvent(ev, dateKey);
         };
 
@@ -389,6 +402,7 @@ function enableDrag(block, ev, dateKey) {
         document.addEventListener("mouseup", up);
     });
 }
+
 
 // ============================================================
 //  リサイズ
@@ -446,14 +460,10 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
-        const cell = e.target.closest(".grid-cell");
-        if (!cell) return;
+        if (!e.target.classList.contains("grid-cell")) return;
 
-        const slot = parseInt(cell.dataset.slot);
-        const startTime = slotToTime(slot);
-        const endTime = slotToTime(slot + 1); // 30分
-
-        openCreateModal(dateKey, startTime, endTime);
+        const slot = parseInt(e.target.dataset.slot);
+        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 1));
     });
 }
 
