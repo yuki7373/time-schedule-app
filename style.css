@@ -114,61 +114,70 @@ main{
   font-size:11px;
   white-space:nowrap;
 }
-
 /* ============================================================
-   WEEK VIEW（Googleカレンダー風）
+   WEEK VIEW（Googleカレンダー風・縦スクロール）
    ============================================================ */
+
 .week-view{
   background:#fff;
   padding:10px;
   border-radius:10px;
   box-shadow:0 2px 6px rgba(0,0,0,0.06);
   margin-top:20px;
-  overflow-x:auto;
+  overflow-y:scroll;
+  height:900px; /* 見やすいウィンドウ高さ */
 }
 
 /* 曜日ヘッダー */
 .week-days{
   display:grid;
-  grid-template-columns:60px repeat(7,1fr);
+  grid-template-columns:80px repeat(7,1fr);
   text-align:center;
   font-weight:700;
-  margin-bottom:8px;
+  margin-bottom:6px;
   color:#374151;
+  background:#fff;
+  position:sticky;
+  top:0;
+  z-index:10;
+  padding:6px 0;
 }
 
 /* グリッド本体 */
 .week-grid{
   display:grid;
-  grid-template-columns:60px repeat(7,1fr);
+  grid-template-columns:80px repeat(7,1fr);
+  height:1440px; /* 1日＝24h×60px = 1440px */
   border-top:1px solid var(--grid);
+  position:relative;
 }
 
 /* ------- 左：時間軸 ------- */
 .time-col{
   border-right:1px solid var(--grid);
 }
+
 .time-cell{
-  height:40px;
+  height:60px; /* 1時間＝60px */
   padding-right:6px;
   font-size:12px;
-  color:var(--muted);
+  color:#6b7280;
   display:flex;
   justify-content:flex-end;
   align-items:flex-start;
 }
 
-/* ------- 右：曜日ごとの列 ------- */
+/* ------- 各曜日の列 ------- */
 .day-col{
   border-left:1px solid var(--grid);
   border-right:1px solid var(--grid);
   position:relative;
-  min-height:1920px; /* 40px × 48（30分×24h） */
+  height:1440px;
 }
 
-/* 30分刻みの背景グリッド */
+/* 30分刻みのグリッド線 */
 .grid-cell{
-  height:40px;
+  height:30px; /* 30分＝30px */
   border-top:1px solid #f1f5f9;
   position:relative;
 }
@@ -197,12 +206,11 @@ main{
   left:0;
   right:0;
   bottom:0;
-  height:6px;
+  height:8px;
   cursor:ns-resize;
   background:rgba(255,255,255,0.4);
   border-radius:0 0 6px 6px;
 }
-
 /* ============================================================
    TODAY VIEW（1日版）
    ============================================================ */
