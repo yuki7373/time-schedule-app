@@ -250,6 +250,7 @@ function renderToday(container) {
     const key = toYMD(state.focusDate);
     const events = loadEvents()[key] || [];
 
+    // タイトル行
     const head = document.createElement("div");
     head.className = "week-days";
     head.innerHTML = `<div></div><div>${weekdayNames[state.focusDate.getDay()]} ${state.focusDate.getMonth()+1}/${state.focusDate.getDate()}</div>`;
@@ -277,18 +278,23 @@ function renderToday(container) {
     for (let s = 0; s < 48; s++) {
         const cell = document.createElement("div");
         cell.className = "grid-cell";
+        cell.dataset.slot = s;
         col.appendChild(cell);
     }
 
+    // ★ イベント描画が抜けていたので追加！
     events.forEach(ev => placeEventBlock(col, ev, key));
 
+    // クリック追加
     enableColumnClick(col, key);
+    // ドラッグ追加
     enableColumnDrag(col, key);
 
     grid.appendChild(col);
     wrap.appendChild(grid);
     container.appendChild(wrap);
 }
+
 
 // ============================================================
 //   ボタンイベント
@@ -513,15 +519,15 @@ function enableColumnDrag(col, dateKey) {
     document.addEventListener("mouseup", () => {
         if (!isDragging) return;
         isDragging = false;
-
+    
         if (!dragPreview) return;
-
+    
         const top = parseInt(dragPreview.style.top);
         const height = parseInt(dragPreview.style.height);
-
+    
         const startSlot = top / 30;
         const endSlot = startSlot + (height / 30);
-
+    
         const ev = {
             id: "ev" + Date.now(),
             title: "予定",
@@ -529,17 +535,23 @@ function enableColumnDrag(col, dateKey) {
             start: slotToTime(startSlot),
             end: slotToTime(endSlot)
         };
-
+    
         const events = loadEvents();
         const list = events[dateKey] || [];
         list.push(ev);
         events[dateKey] = list;
         saveEvents(events);
-
+    
         dragPreview.remove();
         dragPreview = null;
+    
+        // 🔥 ここが変更ポイント：追加後すぐ編集モーダルを開く！
+        openEditModal(ev, dateKey);
+    
+        // 🔥 画面再描画は openEditModal の後でOK
         render();
     });
+
 }
 
 // ============================================================
