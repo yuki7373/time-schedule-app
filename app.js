@@ -430,23 +430,18 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
+        if (!e.target.classList.contains("grid-cell")) return;
 
-        // 予定ブロックをクリックした場合は編集
-        const blk = e.target.closest(".event-block");
-        if (blk) return;
+        const slot = parseInt(e.target.dataset.slot);
 
-        const cell = e.target.closest(".grid-cell");
-        if (!cell) return;
-
-        const slot = Number(cell.dataset.slot);
-        if (Number.isNaN(slot)) return;
-
+        // ★ クリックした時間を正しく取得
         const start = slotToTime(slot);
-        const end = slotToTime(slot + 2); // 1時間
+        const end = slotToTime(slot + 2); // ← 1時間 (30分×2)
 
         openCreateModal(dateKey, start, end);
     });
 }
+
 
 
 
@@ -580,6 +575,11 @@ tRange.style.height = "30px";
 //  モーダル OPEN（新規作成）
 // ============================================================
 function openCreateModal(dateKey, start, end) {
+
+    // ★ NaN 対策：不正ならデフォルト 09:00–10:00
+    if (!start || start.includes("NaN")) start = "09:00";
+    if (!end   || end.includes("NaN"))   end   = "10:00";
+
     state.editingEvent = null;
     state.editingDateKey = dateKey;
 
@@ -592,9 +592,9 @@ function openCreateModal(dateKey, start, end) {
     inputEnd.value = end;
 
     syncTimelineFromInputs();
-
     modal.classList.remove("hidden");
 }
+
 
 // ============================================================
 //  モーダル OPEN（編集）
@@ -653,10 +653,7 @@ function enableTimelineHandle(handle, type) {
 
     handle.addEventListener("mousedown", e => {
         startY = e.clientY;
-
-        // ← 空文字対策！ NaN の場合は 0 を補正
         origin = parseInt(handle.style.top);
-        if (Number.isNaN(origin)) origin = 0;
 
         const move = e2 => {
             let newTop = origin + (e2.clientY - startY);
@@ -665,15 +662,18 @@ function enableTimelineHandle(handle, type) {
             newTop = Math.min(720 - 12, newTop);
 
             let slot = Math.round((newTop + 12) / 30);
+            slot = Math.max(0, Math.min(47, slot));
+
+            const time = slotToTime(slot);
 
             if (type === "start") {
-                const endSlot = timeToSlot(inputEnd.value);
-                if (slot >= endSlot) slot = endSlot - 1;
-                inputStart.value = slotToTime(slot);
+                // ★ startがendを超えないように制御
+                if (slot >= timeToSlot(inputEnd.value)) return;
+                inputStart.value = time;
             } else {
-                const startSlot = timeToSlot(inputStart.value);
-                if (slot <= startSlot) slot = startSlot + 1;
-                inputEnd.value = slotToTime(slot);
+                // ★ endがstartを下回らないように制御
+                if (slot <= timeToSlot(inputStart.value)) return;
+                inputEnd.value = time;
             }
 
             syncTimelineFromInputs();
@@ -688,6 +688,7 @@ function enableTimelineHandle(handle, type) {
         document.addEventListener("mouseup", up);
     });
 }
+
 
 
 
