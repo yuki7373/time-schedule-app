@@ -41,46 +41,53 @@ if ('serviceWorker' in navigator) {
 </footer>
 
 <!-- ======================== EVENT MODAL (VT-1) ======================== -->
-<!-- 予定モーダル -->
 <div id="event-modal" class="modal hidden">
-  <div class="modal-content">
 
-    <h2 id="modal-title">予定を編集</h2>
+    <div class="modal-content">
 
-    <label>タイトル</label>
-    <input id="modal-input-title" type="text">
+        <h2 id="modal-title">新しい予定</h2>
 
-    <label>メモ</label>
-    <textarea id="modal-input-note"></textarea>
+        <!-- タイトル入力 -->
+        <label class="modal-label">タイトル</label>
+        <input id="modal-input-title" class="modal-input" type="text">
 
-    <div class="time-row">
-      <div>
-        <label>開始</label>
-        <input id="modal-input-start" type="time" step="1800">
-      </div>
-      <div>
-        <label>終了</label>
-        <input id="modal-input-end" type="time" step="1800">
-      </div>
+        <!-- メモ欄 -->
+        <label class="modal-label">メモ</label>
+        <textarea id="modal-input-note" class="modal-textarea"></textarea>
+
+        <!-- 時間入力 -->
+        <div class="time-inputs">
+            <div>
+                <label class="modal-label">開始</label>
+                <input id="modal-input-start" type="text" class="modal-input" placeholder="10:00">
+            </div>
+            <div>
+                <label class="modal-label">終了</label>
+                <input id="modal-input-end" type="text" class="modal-input" placeholder="10:30">
+            </div>
+        </div>
+
+        <!-- ▼ VT-1 タイムライン（縦スロット） -->
+        <div class="timeline-wrap">
+            <div class="timeline-hours">
+                <!-- JSで00:00〜23:30を自動生成 -->
+            </div>
+
+            <div class="timeline-bar">
+                <div id="timeline-range" class="timeline-range"></div>
+                <div id="timeline-handle-start" class="timeline-handle handle-start"></div>
+                <div id="timeline-handle-end" class="timeline-handle handle-end"></div>
+            </div>
+        </div>
+
+        <!-- ボタン -->
+        <div class="modal-buttons">
+            <button id="modal-save" class="btn primary">保存</button>
+            <button id="modal-cancel" class="btn">キャンセル</button>
+            <button id="modal-delete" class="btn danger hidden">削除</button>
+        </div>
+
     </div>
-
-    <div class="timeline">
-      <div class="timeline-hours"></div>
-
-      <div class="timeline-bar">
-        <div id="timeline-range"></div>
-        <div id="timeline-handle-start" class="timeline-handle"></div>
-        <div id="timeline-handle-end" class="timeline-handle"></div>
-      </div>
-    </div>
-
-    <div class="modal-buttons">
-      <button id="modal-save" class="btn primary">保存</button>
-      <button id="modal-cancel" class="btn">キャンセル</button>
-      <button id="modal-delete" class="btn danger hidden">削除</button>
-    </div>
-
-  </div>
 </div>
 
 <script src="app.js"></script>
