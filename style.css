@@ -311,5 +311,15 @@ main{
   box-shadow:0 2px 6px rgba(0,0,0,0.2);
 }
 
+.time-inputs{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+}
+.time-inputs div{
+  flex:1;
+}
+
+
 .handle-start{}
 .handle-end{}
