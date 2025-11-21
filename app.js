@@ -460,14 +460,20 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
-        if (window.__dragging) return; // ← NEW!
 
-        if (!e.target.classList.contains("grid-cell")) return;
+        // ★ ドラッグ中はクリック無効
+        if (window.__dragging) return;
 
-        const slot = parseInt(e.target.dataset.slot);
-        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 2)); // 1時間
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+
+        const slot = parseInt(cell.dataset.slot);
+
+        // ★ 1時間後をデフォルト終了時刻にする
+        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 2));
     });
 }
+
 
 
 
@@ -480,14 +486,14 @@ function enableColumnDrag(col, dateKey) {
     let isDragging = false;
 
     col.addEventListener("mousedown", e => {
-        window.__dragging = false;   // ← NEW!
+        window.__dragging = false;  // ★クリック判定に必要
+
         const cell = e.target.closest(".grid-cell");
         if (!cell) return;
 
         dragStartSlot = parseInt(cell.dataset.slot);
         isDragging = true;
 
-        // プレビュー
         dragPreview = document.createElement("div");
         dragPreview.className = "event-block";
         dragPreview.style.opacity = "0.4";
@@ -503,12 +509,13 @@ function enableColumnDrag(col, dateKey) {
     col.addEventListener("mousemove", e => {
         if (!isDragging) return;
 
-        window.__dragging = true; // ← NEW!
+        // ★ ここが超重要：マウスが動いたらドラッグ扱いへ
+        window.__dragging = true;
+
         const cell = e.target.closest(".grid-cell");
         if (!cell) return;
 
         const currentSlot = parseInt(cell.dataset.slot);
-
         const s = Math.min(dragStartSlot, currentSlot);
         const e2 = Math.max(dragStartSlot, currentSlot) + 1;
 
@@ -517,7 +524,10 @@ function enableColumnDrag(col, dateKey) {
     });
 
     document.addEventListener("mouseup", () => {
-        setTimeout(() => window.__dragging = false, 0); // ← NEW!
+
+        // ★ 1フレーム後にドラッグ終了扱いへ
+        setTimeout(() => { window.__dragging = false; }, 0);
+
         if (!isDragging) return;
         isDragging = false;
 
