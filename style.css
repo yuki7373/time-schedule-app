@@ -1,0 +1,47 @@
+body {
+    font-family: sans-serif;
+    background: #f4f6f9;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+}
+
+#schedule-container {
+    max-width: 600px;
+    margin: auto;
+}
+
+.time-block {
+    background: white;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 10px;
+}
+
+.time-label {
+    width: 60px;
+    font-weight: bold;
+}
+
+textarea {
+    flex: 1;
+    height: 40px;
+}
+
+#save-btn {
+    display: block;
+    width: 200px;
+    margin: 20px auto;
+    padding: 10px;
+    border: none;
+    background: #4e73df;
+    color: white;
+    border-radius: 6px;
+    font-size: 18px;
+}
