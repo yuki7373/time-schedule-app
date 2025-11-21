@@ -430,15 +430,19 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
-        if (!e.target.classList.contains("grid-cell")) return;
 
-        const slot = parseInt(e.target.dataset.slot);
+        // 予定ブロックをクリックした場合は編集
+        const blk = e.target.closest(".event-block");
+        if (blk) return;
 
-        // ← slot が NaN なら絶対に実行しないように防御
-        if (isNaN(slot)) return;
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+
+        const slot = Number(cell.dataset.slot);
+        if (Number.isNaN(slot)) return;
 
         const start = slotToTime(slot);
-        const end = slotToTime(slot + 2);  // デフォルト 1時間（2スロット＝30分 × 2）
+        const end = slotToTime(slot + 2); // 1時間
 
         openCreateModal(dateKey, start, end);
     });
@@ -628,9 +632,11 @@ function syncTimelineFromInputs() {
     tRange.style.top = top + "px";
     tRange.style.height = height + "px";
 
+    // ← ここ重要：初期位置を絶対に px で入れておく
     tHandleStart.style.top = (top - 12) + "px";
     tHandleEnd.style.top = (top + height - 12) + "px";
 }
+
 
 // ============================================================
 //  タイムラインのハンドルドラッグ
@@ -640,30 +646,28 @@ function enableTimelineHandle(handle, type) {
 
     handle.addEventListener("mousedown", e => {
         startY = e.clientY;
+
+        // ← 空文字対策！ NaN の場合は 0 を補正
         origin = parseInt(handle.style.top);
+        if (Number.isNaN(origin)) origin = 0;
 
         const move = e2 => {
             let newTop = origin + (e2.clientY - startY);
 
-            // 範囲制限 (-12 ～ 708px)
             newTop = Math.max(-12, newTop);
             newTop = Math.min(720 - 12, newTop);
 
             let slot = Math.round((newTop + 12) / 30);
 
-            // ---- 交差しないように制限 ----
             if (type === "start") {
                 const endSlot = timeToSlot(inputEnd.value);
                 if (slot >= endSlot) slot = endSlot - 1;
+                inputStart.value = slotToTime(slot);
             } else {
                 const startSlot = timeToSlot(inputStart.value);
                 if (slot <= startSlot) slot = startSlot + 1;
+                inputEnd.value = slotToTime(slot);
             }
-
-            const time = slotToTime(slot);
-
-            if (type === "start") inputStart.value = time;
-            else inputEnd.value = time;
 
             syncTimelineFromInputs();
         };
@@ -677,6 +681,7 @@ function enableTimelineHandle(handle, type) {
         document.addEventListener("mouseup", up);
     });
 }
+
 
 
 
