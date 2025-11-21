@@ -4,42 +4,82 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>タイムスケジュール</title>
+
 <link rel="stylesheet" href="style.css">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4e73df">
+
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+}
+</script>
 </head>
 <body>
-<div id="app">
-    <header>
-        <button id="month-btn">月表示</button>
-        <button id="week-btn">週表示</button>
-        <button id="today-btn">今日</button>
-        <span id="current-label"></span>
-    </header>
-    <div id="content"></div>
-</div>
 
-<!-- Modal -->
-<div id="event-modal" class="hidden">
+<!-- ======================== HEADER ======================== -->
+<header class="top">
+    <div class="brand">タイムスケジュール</div>
+
+    <div class="controls">
+        <button id="month-btn" class="btn primary">月表示</button>
+        <button id="week-btn" class="btn">週表示</button>
+        <button id="today-btn" class="btn">今日</button>
+        <div id="current-label" class="current-label"></div>
+    </div>
+</header>
+
+<!-- ======================== MAIN AREA ======================== -->
+<main id="app" class="scale-wrapper">
+    <div id="content"></div>
+</main>
+
+
+<footer class="small">
+    保存: localStorage（この端末だけに保存されます）
+</footer>
+
+<!-- ======================== EVENT MODAL (VT-1) ======================== -->
+<!-- 予定モーダル -->
+<div id="event-modal" class="modal hidden">
   <div class="modal-content">
-    <h2 id="modal-title"></h2>
-    <label>タイトル <input id="modal-input-title"></label>
-    <label>メモ <textarea id="modal-input-note"></textarea></label>
-    <label>開始 <input id="modal-input-start"></label>
-    <label>終了 <input id="modal-input-end"></label>
+
+    <h2 id="modal-title">予定を編集</h2>
+
+    <label>タイトル</label>
+    <input id="modal-input-title" type="text">
+
+    <label>メモ</label>
+    <textarea id="modal-input-note"></textarea>
+
+    <div class="time-row">
+      <div>
+        <label>開始</label>
+        <input id="modal-input-start" type="time" step="1800">
+      </div>
+      <div>
+        <label>終了</label>
+        <input id="modal-input-end" type="time" step="1800">
+      </div>
+    </div>
 
     <div class="timeline">
       <div class="timeline-hours"></div>
+
       <div class="timeline-bar">
         <div id="timeline-range"></div>
-        <div id="timeline-handle-start" class="handle"></div>
-        <div id="timeline-handle-end" class="handle"></div>
+        <div id="timeline-handle-start" class="timeline-handle"></div>
+        <div id="timeline-handle-end" class="timeline-handle"></div>
       </div>
     </div>
 
     <div class="modal-buttons">
-      <button id="modal-save">保存</button>
-      <button id="modal-cancel">キャンセル</button>
-      <button id="modal-delete">削除</button>
+      <button id="modal-save" class="btn primary">保存</button>
+      <button id="modal-cancel" class="btn">キャンセル</button>
+      <button id="modal-delete" class="btn danger hidden">削除</button>
     </div>
+
   </div>
 </div>
 
