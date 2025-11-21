@@ -13,7 +13,7 @@ body{
   color:#222;
 }
 
-/* ====== HEADER ====== */
+/* ====================== HEADER ====================== */
 .top{
   display:flex;
   justify-content:space-between;
@@ -36,10 +36,14 @@ body{
   border:none;
   color:#fff;
 }
+.btn.danger{
+  background:#dc2626;
+  color:white;
+  border:none;
+}
 .current-label{
   font-size:13px;
   color:var(--muted);
-  margin-left:8px;
 }
 
 main{
@@ -49,7 +53,7 @@ main{
 }
 
 /* ============================================================
-   MONTH VIEW（Googleカレンダー風）
+   MONTH VIEW
    ============================================================ */
 .month-view{
   background:#fff;
@@ -88,9 +92,7 @@ main{
   transition:background 0.1s;
 }
 
-.day-cell:hover{
-  background:#f9fafb;
-}
+.day-cell:hover{ background:#f9fafb; }
 
 .day-num{
   font-weight:700;
@@ -114,8 +116,9 @@ main{
   font-size:11px;
   white-space:nowrap;
 }
+
 /* ============================================================
-   WEEK VIEW（Googleカレンダー風・縦スクロール）
+   WEEK / TODAY VIEW（Googleカレンダー風）
    ============================================================ */
 
 .week-view{
@@ -125,10 +128,9 @@ main{
   box-shadow:0 2px 6px rgba(0,0,0,0.06);
   margin-top:20px;
   overflow-y:scroll;
-  height:900px; /* 見やすいウィンドウ高さ */
+  height:900px;
 }
 
-/* 曜日ヘッダー */
 .week-days{
   display:grid;
   grid-template-columns:80px repeat(7,1fr);
@@ -141,24 +143,22 @@ main{
   top:0;
   z-index:10;
   padding:6px 0;
+  border-bottom:1px solid #e5e7eb;
 }
 
-/* グリッド本体 */
 .week-grid{
   display:grid;
   grid-template-columns:80px repeat(7,1fr);
-  height:1440px; /* 1日＝24h×60px = 1440px */
-  border-top:1px solid var(--grid);
+  height:1440px; /* 24h x 60px */
   position:relative;
 }
 
-/* ------- 左：時間軸 ------- */
 .time-col{
   border-right:1px solid var(--grid);
 }
 
 .time-cell{
-  height:60px; /* 1時間＝60px */
+  height:60px;
   padding-right:6px;
   font-size:12px;
   color:#6b7280;
@@ -167,7 +167,6 @@ main{
   align-items:flex-start;
 }
 
-/* ------- 各曜日の列 ------- */
 .day-col{
   border-left:1px solid var(--grid);
   border-right:1px solid var(--grid);
@@ -175,14 +174,12 @@ main{
   height:1440px;
 }
 
-/* 30分刻みのグリッド線 */
 .grid-cell{
-  height:30px; /* 30分＝30px */
+  height:30px;
   border-top:1px solid #f1f5f9;
   position:relative;
 }
 
-/* ------- EVENT BLOCK（予定） ------- */
 .event-block{
   position:absolute;
   left:4px;
@@ -196,10 +193,7 @@ main{
   box-shadow:0 2px 4px rgba(0,0,0,0.2);
   user-select:none;
 }
-
-.event-dragging{
-  opacity:0.6;
-}
+.event-dragging{ opacity:0.6; }
 
 .resize-handle{
   position:absolute;
@@ -211,21 +205,111 @@ main{
   background:rgba(255,255,255,0.4);
   border-radius:0 0 6px 6px;
 }
+
 /* ============================================================
-   TODAY VIEW（1日版）
+   MODAL（Googleカレンダー風）
    ============================================================ */
-.today-view{
+
+.modal.hidden{ display:none; }
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+.modal-content{
+  width:90%;
+  max-width:420px;
   background:#fff;
-  padding:16px;
-  border-radius:10px;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.15);
+}
+
+.modal-label{
+  display:block;
+  font-size:13px;
+  margin:8px 0 4px;
+  color:#374151;
+}
+
+.modal-input{
+  width:100%;
+  padding:8px;
+  font-size:14px;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+}
+
+.modal-textarea{
+  width:100%;
+  height:70px;
+  font-size:14px;
+  padding:8px;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+  resize:none;
+}
+
+.modal-buttons{
+  margin-top:18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
 /* ============================================================
-   FOOTER
+   VT-1 TIME RANGE SLIDER（縦タイムライン）
    ============================================================ */
-.small{
-  text-align:center;
-  margin-top:20px;
-  font-size:13px;
-  color:#6b7280;
+
+.timeline-wrap{
+  display:flex;
+  gap:10px;
+  margin-top:14px;
 }
+
+.timeline-hours{
+  font-size:11px;
+  color:#6b7280;
+  display:flex;
+  flex-direction:column;
+  gap:18px; /* 30px に近づける */
+  padding-top:4px;
+}
+
+.timeline-bar{
+  position:relative;
+  width:60px;
+  height:720px; /* 12h 表現, スクロールで拡大可 */
+  border-radius:8px;
+  background:#f3f4f6;
+  border:1px solid #e5e7eb;
+}
+
+.timeline-range{
+  position:absolute;
+  left:0;
+  right:0;
+  background:rgba(78,115,223,0.3);
+  border:1px solid var(--accent);
+  border-radius:6px;
+}
+
+.timeline-handle{
+  position:absolute;
+  left:50%;
+  width:24px;
+  height:24px;
+  margin-left:-12px;
+  background:var(--accent);
+  border-radius:50%;
+  cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,0.2);
+}
+
+.handle-start{}
+.handle-end{}
