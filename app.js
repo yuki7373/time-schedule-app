@@ -159,10 +159,14 @@ function slotToTime(slot) {
     const m = min % 60;
     return pad2(h) + ":" + pad2(m);
 }
+
 function timeToSlot(t) {
+    if (!t || !t.includes(":")) return 0; // ← 追加
     const [h, m] = t.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return 0;   // ← 追加
     return (h * 60 + m) / 30;
 }
+
 
 // ============================================================
 //   WEEK RENDER
@@ -564,19 +568,11 @@ function setupTimelineHours() {
 }
 setupTimelineHours();
 
-// タイムラインハンドル初期位置を強制
-tHandleStart.style.top = "-12px";   // 00:00 の位置
-tHandleEnd.style.top   = "18px";    // 00:30 の位置
-tRange.style.top = "0px";
-tRange.style.height = "30px";
-
-
 // ============================================================
 //  モーダル OPEN（新規作成）
 // ============================================================
 function openCreateModal(dateKey, start, end) {
 
-    // ★ NaN 対策：不正ならデフォルト 09:00–10:00
     if (!start || start.includes("NaN")) start = "09:00";
     if (!end   || end.includes("NaN"))   end   = "10:00";
 
@@ -594,6 +590,7 @@ function openCreateModal(dateKey, start, end) {
     syncTimelineFromInputs();
     modal.classList.remove("hidden");
 }
+
 
 
 // ============================================================
