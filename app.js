@@ -569,6 +569,13 @@ function setupTimelineHours() {
 }
 setupTimelineHours();
 
+// タイムラインハンドル初期位置を強制
+tHandleStart.style.top = "-12px";   // 00:00 の位置
+tHandleEnd.style.top   = "18px";    // 00:30 の位置
+tRange.style.top = "0px";
+tRange.style.height = "30px";
+
+
 // ============================================================
 //  モーダル OPEN（新規作成）
 // ============================================================
