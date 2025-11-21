@@ -1,6 +1,7 @@
 // ============================================================
-//   Time Schedule App (Googleカレンダー風・月/週/今日ビュー)
-//   修正版（1時間60px / 30分30px 仕様）
+//   Time Schedule App (Googleカレンダー風)
+//   VT-1 モーダル ＋ ドラッグ編集 ＋ クリック作成
+//   1/3  基礎・月/週/今日ビュー
 // ============================================================
 
 // ---- Utility ----
@@ -17,9 +18,14 @@ function saveEvents(events) {
 
 let state = {
     view: "month",
-    focusDate: new Date()
+    focusDate: new Date(),
+    editingEvent: null,     // 編集対象イベント
+    editingDateKey: null    // 編集対象の日付キー
 };
 
+// ============================================================
+//   ボタン状態更新
+// ============================================================
 function updateActiveButton() {
     document.getElementById("month-btn").classList.remove("primary");
     document.getElementById("week-btn").classList.remove("primary");
@@ -48,9 +54,8 @@ function render() {
     else if (state.view === "week") renderWeek(container);
     else renderToday(container);
 
-    updateActiveButton(); // ← ← ★ これ追加！
+    updateActiveButton();
 }
-
 
 // ============================================================
 //   Month View
@@ -89,8 +94,9 @@ function renderMonth(container) {
         grid.appendChild(cell);
     }
 
-    // days
     const events = loadEvents();
+
+    // days
     for (let d = 1; d <= daysInMonth; d++) {
         const cell = document.createElement("div");
         cell.className = "day-cell";
@@ -130,7 +136,7 @@ function renderMonth(container) {
 }
 
 // ============================================================
-//   Week View（Googleカレンダー風）
+//   Week View
 // ============================================================
 function startOfWeek(d) {
     const c = new Date(d);
@@ -147,6 +153,23 @@ function formatWeekRange(d) {
     return toYMD(s) + " ～ " + toYMD(e);
 }
 
+// スロット → HH:MM
+function slotToTime(slot) {
+    const min = slot * 30;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return pad2(h) + ":" + pad2(m);
+}
+
+// HH:MM → スロット
+function timeToSlot(t) {
+    const [h, m] = t.split(":").map(Number);
+    return (h * 60 + m) / 30;
+}
+
+// ============================================================
+//   週ビュー
+// ============================================================
 function renderWeek(container) {
     const wrap = document.createElement("div");
     wrap.className = "week-view";
@@ -154,10 +177,10 @@ function renderWeek(container) {
     const weekStart = startOfWeek(state.focusDate);
     const events = loadEvents();
 
-    // --- 曜日ヘッダー ---
+    // 曜日ヘッダー
     const days = document.createElement("div");
     days.className = "week-days";
-    days.appendChild(document.createElement("div")); // 時間軸ぶんの空枠
+    days.appendChild(document.createElement("div"));
 
     for (let i = 0; i < 7; i++) {
         const d = new Date(weekStart);
@@ -168,14 +191,13 @@ function renderWeek(container) {
     }
     wrap.appendChild(days);
 
-    // --- グリッド ---
+    // グリッド
     const grid = document.createElement("div");
     grid.className = "week-grid";
 
-    // 左：時間軸
+    // 左・時間軸
     const timeCol = document.createElement("div");
     timeCol.className = "time-col";
-
     for (let h = 0; h < 24; h++) {
         const t = document.createElement("div");
         t.className = "time-cell";
@@ -184,17 +206,17 @@ function renderWeek(container) {
     }
     grid.appendChild(timeCol);
 
-    // 各曜日
+    // 曜日列
     for (let i = 0; i < 7; i++) {
         const d = new Date(weekStart);
         d.setDate(d.getDate() + i);
-
         const key = toYMD(d);
+
         const col = document.createElement("div");
         col.className = "day-col";
         col.dataset.date = key;
 
-        // 30分 × 48
+        // 30分単位 × 48
         for (let s = 0; s < 48; s++) {
             const cell = document.createElement("div");
             cell.className = "grid-cell";
@@ -202,10 +224,14 @@ function renderWeek(container) {
             col.appendChild(cell);
         }
 
-        // イベント配置
-        if (events[key]) {
-            events[key].forEach(ev => placeEventBlock(col, ev, key));
-        }
+        // 既存イベント配置
+        (events[key] || []).forEach(ev => placeEventBlock(col, ev, key));
+
+        // クリック追加（タイトル入力モーダル）
+        enableColumnClick(col, key);
+
+        // ドラッグ追加（範囲選択）
+        enableColumnDrag(col, key);
 
         grid.appendChild(col);
     }
@@ -215,39 +241,120 @@ function renderWeek(container) {
 }
 
 // ============================================================
-//   Event Block（配置 / ドラッグ / リサイズ）
+//   今日ビュー（1日専用）
 // ============================================================
+function renderToday(container) {
+    const wrap = document.createElement("div");
+    wrap.className = "week-view";
+
+    const key = toYMD(state.focusDate);
+    const events = loadEvents()[key] || [];
+
+    const head = document.createElement("div");
+    head.className = "week-days";
+    head.innerHTML = `<div></div><div>${weekdayNames[state.focusDate.getDay()]} ${state.focusDate.getMonth()+1}/${state.focusDate.getDate()}</div>`;
+    wrap.appendChild(head);
+
+    const grid = document.createElement("div");
+    grid.className = "week-grid";
+
+    // 時間軸
+    const timeCol = document.createElement("div");
+    timeCol.className = "time-col";
+    for (let h = 0; h < 24; h++) {
+        const t = document.createElement("div");
+        t.className = "time-cell";
+        t.textContent = pad2(h) + ":00";
+        timeCol.appendChild(t);
+    }
+    grid.appendChild(timeCol);
+
+    // 今日の列
+    const col = document.createElement("div");
+    col.className = "day-col";
+    col.dataset.date = key;
+
+    for (let s = 0; s < 48; s++) {
+        const cell = document.createElement("div");
+        cell.className = "grid-cell";
+        col.appendChild(cell);
+    }
+
+    events.forEach(ev => placeEventBlock(col, ev, key));
+
+    enableColumnClick(col, key);
+    enableColumnDrag(col, key);
+
+    grid.appendChild(col);
+    wrap.appendChild(grid);
+    container.appendChild(wrap);
+}
+
+// ============================================================
+//   ボタンイベント
+// ============================================================
+document.getElementById("month-btn").onclick = () => {
+    state.view = "month";
+    render();
+};
+document.getElementById("week-btn").onclick = () => {
+    state.view = "week";
+    render();
+};
+document.getElementById("today-btn").onclick = () => {
+    state.view = "today";
+    render();
+};
+
+
+// 初回描画
+render();
+
+// ============================================================
+//  EVENT BLOCK（配置 + ドラッグ移動 + リサイズ + 編集クリック）
+// ============================================================
+
 function placeEventBlock(col, ev, dateKey) {
     const block = document.createElement("div");
     block.className = "event-block";
     block.textContent = ev.title;
+    block.dataset.id = ev.id;
 
+    // Resize handle
     const resize = document.createElement("div");
     resize.className = "resize-handle";
     block.appendChild(resize);
 
     // 位置と高さ（30分=30px）
-    const startParts = ev.start.split(":");
-    const endParts = ev.end.split(":");
+    const startMin = timeToSlot(ev.start) * 30;
+    const endMin = timeToSlot(ev.end) * 30;
 
-    const startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-    const endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-
-    const top = (startMin / 30) * 30;
-    const height = ((endMin - startMin) / 30) * 30;
+    const top = startMin;
+    const height = endMin - startMin;
 
     block.style.top = top + "px";
     block.style.height = height + "px";
 
+    // ドラッグ移動
     enableDrag(block, ev, dateKey);
+
+    // リサイズ
     enableResize(block, ev, dateKey);
+
+    // クリック編集
+    block.addEventListener("click", e => {
+        e.stopPropagation();
+        openEditModal(ev, dateKey);
+    });
 
     col.appendChild(block);
 }
 
+// ============================================================
+//  ドラッグ移動
+// ============================================================
 function enableDrag(block, ev, dateKey) {
-    let startY;
-    let startTop;
+    let startY, startTop;
 
     block.addEventListener("mousedown", e => {
         if (e.target.classList.contains("resize-handle")) return;
@@ -265,17 +372,17 @@ function enableDrag(block, ev, dateKey) {
 
         const up = () => {
             block.classList.remove("event-dragging");
+            document.removeEventListener("mousemove", move);
+            document.removeEventListener("mouseup", up);
 
             const finalTop = parseInt(block.style.top);
             const startSlot = finalTop / 30;
-            const newStartMin = startSlot * 30;
 
-            ev.start = formatTime(newStartMin);
-            ev.end = formatTime(newStartMin + parseInt(block.style.height) / 30 * 30);
+            const durationMin = parseInt(block.style.height) / 30 * 30;
 
+            ev.start = slotToTime(startSlot);
+            ev.end = slotToTime(startSlot + durationMin / 30);
             saveMovedEvent(ev, dateKey);
-            document.removeEventListener("mousemove", move);
-            document.removeEventListener("mouseup", up);
         };
 
         document.addEventListener("mousemove", move);
@@ -283,6 +390,9 @@ function enableDrag(block, ev, dateKey) {
     });
 }
 
+// ============================================================
+//  リサイズ
+// ============================================================
 function enableResize(block, ev, dateKey) {
     const handle = block.querySelector(".resize-handle");
 
@@ -300,16 +410,261 @@ function enableResize(block, ev, dateKey) {
         };
 
         const up = () => {
+            document.removeEventListener("mousemove", move);
+            document.removeEventListener("mouseup", up);
+
             const finalH = parseInt(block.style.height);
             const durationMin = finalH / 30 * 30;
 
-            const startParts = ev.start.split(":");
-            const startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-
-            ev.end = formatTime(startMin + durationMin);
+            const startSlot = timeToSlot(ev.start);
+            ev.end = slotToTime(startSlot + durationMin / 30);
 
             saveMovedEvent(ev, dateKey);
+        };
 
+        document.addEventListener("mousemove", move);
+        document.addEventListener("mouseup", up);
+    });
+}
+
+// ============================================================
+//  イベント更新保存
+// ============================================================
+function saveMovedEvent(ev, dateKey) {
+    const events = loadEvents();
+    const list = events[dateKey] || [];
+
+    const idx = list.findIndex(e => e.id === ev.id);
+    if (idx >= 0) list[idx] = ev;
+
+    events[dateKey] = list;
+    saveEvents(events);
+}
+
+// ============================================================
+//  クリックで新規作成（タイトル入力モーダル）
+// ============================================================
+function enableColumnClick(col, dateKey) {
+    col.addEventListener("click", e => {
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+
+        const slot = parseInt(cell.dataset.slot);
+        const startTime = slotToTime(slot);
+        const endTime = slotToTime(slot + 1); // 30分
+
+        openCreateModal(dateKey, startTime, endTime);
+    });
+}
+
+// ============================================================
+//  ドラッグで選択 → 「予定」イベント自動作成
+// ============================================================
+function enableColumnDrag(col, dateKey) {
+    let dragStartSlot = null;
+    let dragPreview = null;
+    let isDragging = false;
+
+    col.addEventListener("mousedown", e => {
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+
+        dragStartSlot = parseInt(cell.dataset.slot);
+        isDragging = true;
+
+        // プレビュー
+        dragPreview = document.createElement("div");
+        dragPreview.className = "event-block";
+        dragPreview.style.opacity = "0.4";
+        dragPreview.style.left = "6px";
+        dragPreview.style.right = "6px";
+        dragPreview.style.background = "var(--accent)";
+        dragPreview.style.borderRadius = "6px";
+        dragPreview.style.position = "absolute";
+        dragPreview.style.pointerEvents = "none";
+        col.appendChild(dragPreview);
+    });
+
+    col.addEventListener("mousemove", e => {
+        if (!isDragging) return;
+
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+
+        const currentSlot = parseInt(cell.dataset.slot);
+
+        const s = Math.min(dragStartSlot, currentSlot);
+        const e2 = Math.max(dragStartSlot, currentSlot) + 1;
+
+        dragPreview.style.top = (s * 30) + "px";
+        dragPreview.style.height = ((e2 - s) * 30) + "px";
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        if (!dragPreview) return;
+
+        const top = parseInt(dragPreview.style.top);
+        const height = parseInt(dragPreview.style.height);
+
+        const startSlot = top / 30;
+        const endSlot = startSlot + (height / 30);
+
+        const ev = {
+            id: "ev" + Date.now(),
+            title: "予定",
+            note: "",
+            start: slotToTime(startSlot),
+            end: slotToTime(endSlot)
+        };
+
+        const events = loadEvents();
+        const list = events[dateKey] || [];
+        list.push(ev);
+        events[dateKey] = list;
+        saveEvents(events);
+
+        dragPreview.remove();
+        dragPreview = null;
+        render();
+    });
+}
+
+// ============================================================
+//  モーダル開閉 & 初期化
+// ============================================================
+const modal = document.getElementById("event-modal");
+const inputTitle = document.getElementById("modal-input-title");
+const inputNote = document.getElementById("modal-input-note");
+const inputStart = document.getElementById("modal-input-start");
+const inputEnd = document.getElementById("modal-input-end");
+const modalSave = document.getElementById("modal-save");
+const modalCancel = document.getElementById("modal-cancel");
+const modalDelete = document.getElementById("modal-delete");
+const modalTitle = document.getElementById("modal-title");
+
+// タイムライン要素
+const timelineHours = document.querySelector(".timeline-hours");
+const timelineBar = document.querySelector(".timeline-bar");
+const tRange = document.getElementById("timeline-range");
+const tHandleStart = document.getElementById("timeline-handle-start");
+const tHandleEnd = document.getElementById("timeline-handle-end");
+
+// ------------------------------------------------------------
+// 時間ラベル（00:00〜23:30）を生成
+// ------------------------------------------------------------
+function setupTimelineHours() {
+    timelineHours.innerHTML = "";
+    for (let i = 0; i < 24; i++) {
+        const h = document.createElement("div");
+        h.textContent = pad2(i) + ":00";
+        timelineHours.appendChild(h);
+    }
+}
+setupTimelineHours();
+
+// ============================================================
+//  モーダル OPEN（新規）
+// ============================================================
+function openCreateModal(dateKey, start, end) {
+    state.editingEvent = null;
+    state.editingDateKey = dateKey;
+
+    modalTitle.textContent = "新しい予定";
+    modalDelete.classList.add("hidden");
+
+    inputTitle.value = "";
+    inputNote.value = "";
+    inputStart.value = start;
+    inputEnd.value = end;
+
+    syncTimelineFromInputs();
+
+    modal.classList.remove("hidden");
+}
+
+// ============================================================
+//  モーダル OPEN（編集）
+// ============================================================
+function openEditModal(ev, dateKey) {
+    state.editingEvent = ev;
+    state.editingDateKey = dateKey;
+
+    modalTitle.textContent = "予定を編集";
+    modalDelete.classList.remove("hidden");
+
+    inputTitle.value = ev.title;
+    inputNote.value = ev.note || "";
+    inputStart.value = ev.start;
+    inputEnd.value = ev.end;
+
+    syncTimelineFromInputs();
+
+    modal.classList.remove("hidden");
+}
+
+// ============================================================
+//  モーダル CLOSE
+// ============================================================
+modalCancel.onclick = () => {
+    modal.classList.add("hidden");
+};
+modal.addEventListener("click", e => {
+    if (e.target === modal) modal.classList.add("hidden");
+});
+
+// ============================================================
+//  入力 → タイムラインへ反映
+// ============================================================
+function syncTimelineFromInputs() {
+    const startSlot = timeToSlot(inputStart.value);
+    const endSlot = timeToSlot(inputEnd.value);
+
+    const top = startSlot * 30;
+    const height = (endSlot - startSlot) * 30;
+
+    tRange.style.top = top + "px";
+    tRange.style.height = height + "px";
+
+    tHandleStart.style.top = (top - 12) + "px";
+    tHandleEnd.style.top = (top + height - 12) + "px";
+}
+
+// ============================================================
+//  タイムライン（ハンドルドラッグ）
+// ============================================================
+function enableTimelineHandle(handle, type) {
+    let startY, origin;
+
+    handle.addEventListener("mousedown", e => {
+        startY = e.clientY;
+        origin = parseInt(handle.style.top);
+
+        const move = e2 => {
+            let newTop = origin + (e2.clientY - startY);
+
+            // 0〜720px
+            newTop = Math.max(-12, newTop);
+            newTop = Math.min(720 - 12, newTop);
+
+            // 30px刻み
+            let slot = Math.round((newTop + 12) / 30);
+            slot = Math.max(0, Math.min(47, slot));
+
+            const time = slotToTime(slot);
+
+            if (type === "start") {
+                inputStart.value = time;
+            } else {
+                inputEnd.value = time;
+            }
+
+            syncTimelineFromInputs();
+        };
+
+        const up = () => {
             document.removeEventListener("mousemove", move);
             document.removeEventListener("mouseup", up);
         };
@@ -319,90 +674,70 @@ function enableResize(block, ev, dateKey) {
     });
 }
 
-function formatTime(min) {
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    return pad2(h) + ":" + pad2(m);
-}
+enableTimelineHandle(tHandleStart, "start");
+enableTimelineHandle(tHandleEnd, "end");
 
-function saveMovedEvent(ev, dateKey) {
+// ============================================================
+//  保存（新規／編集）
+// ============================================================
+modalSave.onclick = () => {
+    const title = inputTitle.value.trim() || "予定";
+    const note = inputNote.value.trim();
+    const start = inputStart.value;
+    const end = inputEnd.value;
+    const dateKey = state.editingDateKey;
+
     const events = loadEvents();
-    const dayEvents = events[dateKey] || [];
+    const list = events[dateKey] || [];
 
-    const idx = dayEvents.findIndex(e => e.id === ev.id);
-    if (idx >= 0) dayEvents[idx] = ev;
+    if (state.editingEvent) {
+        // ---- 編集保存 ----
+        const ev = state.editingEvent;
+        ev.title = title;
+        ev.note = note;
+        ev.start = start;
+        ev.end = end;
 
-    events[dateKey] = dayEvents;
+        const idx = list.findIndex(x => x.id === ev.id);
+        if (idx >= 0) list[idx] = ev;
+    } else {
+        // ---- 新規作成 ----
+        list.push({
+            id: "ev" + Date.now(),
+            title,
+            note,
+            start,
+            end
+        });
+    }
+
+    events[dateKey] = list;
     saveEvents(events);
-}
 
-// ============================================================
-//   Today View（1日）
-// ============================================================
-function renderToday(container) {
-    const wrap = document.createElement("div");
-    wrap.className = "week-view";  // 同じスタイルでOK（縦スクロール）
-
-    const key = toYMD(state.focusDate);
-    const events = loadEvents()[key] || [];
-
-    // 曜日ヘッダー
-    const header = document.createElement("div");
-    header.className = "week-days";
-    header.innerHTML = `<div></div><div>${weekdayNames[state.focusDate.getDay()]} ${state.focusDate.getMonth()+1}/${state.focusDate.getDate()}</div>`;
-    wrap.appendChild(header);
-
-    // グリッド本体
-    const grid = document.createElement("div");
-    grid.className = "week-grid";
-
-    // 左・時間軸
-    const timeCol = document.createElement("div");
-    timeCol.className = "time-col";
-    for (let h = 0; h < 24; h++) {
-        const t = document.createElement("div");
-        t.className = "time-cell";
-        t.textContent = pad2(h) + ":00";
-        timeCol.appendChild(t);
-    }
-    grid.appendChild(timeCol);
-
-    // 今日の1列
-    const col = document.createElement("div");
-    col.className = "day-col";
-    col.dataset.date = key;
-
-    for (let s = 0; s < 48; s++) {
-        const cell = document.createElement("div");
-        cell.className = "grid-cell";
-        col.appendChild(cell);
-    }
-
-    // イベント追加
-    events.forEach(ev => placeEventBlock(col, ev, key));
-
-    grid.appendChild(col);
-
-    wrap.appendChild(grid);
-    container.appendChild(wrap);
-}
-
-
-// ============================================================
-//   BUTTON HANDLERS
-// ============================================================
-document.getElementById("month-btn").onclick = () => {
-    state.view = "month";
-    render();
-};
-document.getElementById("week-btn").onclick = () => {
-    state.view = "week";
-    render();
-};
-document.getElementById("today-btn").onclick = () => {
-    state.view = "today";
+    modal.classList.add("hidden");
     render();
 };
 
-// 初回
-render();
+// ============================================================
+//  削除（編集モードのみ）
+// ============================================================
+modalDelete.onclick = () => {
+    if (!state.editingEvent) return;
+
+    const dateKey = state.editingDateKey;
+    const events = loadEvents();
+    const list = events[dateKey] || [];
+
+    const filtered = list.filter(ev => ev.id !== state.editingEvent.id);
+    events[dateKey] = filtered;
+
+    saveEvents(events);
+    modal.classList.add("hidden");
+    render();
+};
+
+// ============================================================
+//  入力変更 → タイムライン同期
+// ============================================================
+inputStart.addEventListener("input", syncTimelineFromInputs);
+inputEnd.addEventListener("input", syncTimelineFromInputs);
