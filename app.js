@@ -460,14 +460,15 @@ function saveMovedEvent(ev, dateKey) {
 // ============================================================
 function enableColumnClick(col, dateKey) {
     col.addEventListener("click", e => {
+        if (window.__dragging) return; // ← NEW!
+
         if (!e.target.classList.contains("grid-cell")) return;
 
         const slot = parseInt(e.target.dataset.slot);
-
-        // ★ 修正：終了時刻を +1 → +2（30分×2=1時間）
-        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 2));
+        openCreateModal(dateKey, slotToTime(slot), slotToTime(slot + 2)); // 1時間
     });
 }
+
 
 
 // ============================================================
@@ -479,6 +480,7 @@ function enableColumnDrag(col, dateKey) {
     let isDragging = false;
 
     col.addEventListener("mousedown", e => {
+        window.__dragging = false;   // ← NEW!
         const cell = e.target.closest(".grid-cell");
         if (!cell) return;
 
@@ -501,6 +503,7 @@ function enableColumnDrag(col, dateKey) {
     col.addEventListener("mousemove", e => {
         if (!isDragging) return;
 
+        window.__dragging = true; // ← NEW!
         const cell = e.target.closest(".grid-cell");
         if (!cell) return;
 
@@ -514,6 +517,7 @@ function enableColumnDrag(col, dateKey) {
     });
 
     document.addEventListener("mouseup", () => {
+        setTimeout(() => window.__dragging = false, 0); // ← NEW!
         if (!isDragging) return;
         isDragging = false;
 
