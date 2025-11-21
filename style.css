@@ -323,3 +323,24 @@ main{
 
 .handle-start{}
 .handle-end{}
+
+/* ============================
+   Auto Scale for PC & Mobile
+   ============================ */
+.scale-wrapper{
+  transform-origin: top left;
+}
+
+/* PC向け縮小：横幅が1200pxより小さい場合 */
+@media (max-width: 1200px) {
+  .scale-wrapper{
+    transform: scale(calc(100vw / 1200));
+  }
+}
+
+/* スマホ：横幅が600px以下のとき更に調整 */
+@media (max-width: 600px) {
+  .scale-wrapper{
+    transform: scale(calc(100vw / 420));
+  }
+}
