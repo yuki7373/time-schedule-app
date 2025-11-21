@@ -115,9 +115,8 @@ document.getElementById("today-btn").onclick = ()=>{
   state.view = "today";
   render();
 };
-
 /* ==========================================================
-   WEEK VIEW（Googleカレンダー風）
+   WEEK VIEW（Googleカレンダー風・縦スクロール版）
    ========================================================== */
 function renderWeek(){
   const container = document.getElementById("content");
@@ -126,9 +125,9 @@ function renderWeek(){
   const wrap = document.createElement("div");
   wrap.className = "week-view";
 
-  /* --- controls --- */
+  /* --- 上部の週移動ボタン --- */
   const ctrl = document.createElement("div");
-  ctrl.style.marginBottom = "10px";
+  ctrl.style.margin = "0 0 10px 0";
   ctrl.innerHTML = `
     <button id="prev-week" class="btn">前の週</button>
     <button id="next-week" class="btn">次の週</button>
@@ -141,6 +140,7 @@ function renderWeek(){
     state.focusDate = d;
     render();
   };
+
   document.getElementById("next-week").onclick = ()=>{
     const d = startOfWeek(state.focusDate);
     d.setDate(d.getDate() + 7);
@@ -148,14 +148,14 @@ function renderWeek(){
     render();
   };
 
-  /* --- header（日〜土） --- */
+  /* --- 曜日ヘッダー --- */
   const days = document.createElement("div");
   days.className = "week-days";
 
   const weekStart = startOfWeek(state.focusDate);
   const WEEK = ["日","月","火","水","木","金","土"];
 
-  days.appendChild(document.createElement("div"));
+  days.appendChild(document.createElement("div")); // 時間軸の空白
 
   for(let i=0;i<7;i++){
     const d = new Date(weekStart);
@@ -165,25 +165,25 @@ function renderWeek(){
     cell.textContent = `${WEEK[i]} ${d.getMonth()+1}/${d.getDate()}`;
     days.appendChild(cell);
   }
-
   wrap.appendChild(days);
 
-  /* --- grid --- */
+  /* --- グリッド本体 --- */
   const grid = document.createElement("div");
   grid.className = "week-grid";
 
-  /* time column */
+  /* 左：時間軸 */
   const timeCol = document.createElement("div");
   timeCol.className = "time-col";
 
   for(let h=0;h<24;h++){
     const t = document.createElement("div");
     t.className = "time-cell";
-    t.textContent = `${pad2(h)}:00`;
+    t.textContent = pad2(h) + ":00";
     timeCol.appendChild(t);
   }
   grid.appendChild(timeCol);
 
+  /* 右：各曜日列 */
   const events = loadEvents();
 
   for(let i=0;i<7;i++){
@@ -195,6 +195,7 @@ function renderWeek(){
     col.className = "day-col";
     col.dataset.date = key;
 
+    // 30分刻みの48セル
     for(let s=0;s<48;s++){
       const cell = document.createElement("div");
       cell.className = "grid-cell";
@@ -202,6 +203,7 @@ function renderWeek(){
       col.appendChild(cell);
     }
 
+    // 予定配置
     if(events[key]){
       events[key].forEach(ev=>{
         placeEventBlock(col, ev, key);
